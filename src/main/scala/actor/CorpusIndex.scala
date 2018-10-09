@@ -26,9 +26,11 @@ class CorpusIndex(val corpusName: String) extends Actor with ActorLogging with T
       }
     }
     case Query(str) => {
-      val found = str.split(' ').par.flatMap(w => findItem(rootNode, w.toLowerCase))
-      val present = found.map(n => (n.data, n.foundAt))
-      log.info(s"Found: $present")
+      // Reply back with found nodes
+      sender() ! str.split(' ')
+                    .par
+                    .flatMap(w => findItem(rootNode, w.toLowerCase))
+                    .toList
     }
     case _ => log.error("Invalid command")
   }
