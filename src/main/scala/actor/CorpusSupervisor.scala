@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
 final case class SupervisorStop()
 final case class NewIndex(name: String)
+final case class QueryAll(fragment: String)
 
 object CorpusSupervisor {
   def props(): Props = Props(new CorpusSupervisor)
