@@ -24,6 +24,9 @@ class CorpusSupervisor extends Actor with ActorLogging {
     case NewIndex(name) => {
       indices = context.actorOf(CorpusIndex.props(name), name = name) :: indices
     }
+    case QueryAll(str) => {
+      indices.par.foreach(_ ! Query(str))
+    }
     case _ => log.error("Invalid command")
   }
 }
