@@ -3,9 +3,8 @@ package actor
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.AskSupport
 import akka.util.Timeout
-import util.TreeNode
+import util.{Ranking, TreeNode}
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -19,7 +18,7 @@ object CorpusSupervisor {
   def props(): Props = Props(new CorpusSupervisor)
 }
 
-class CorpusSupervisor extends Actor with ActorLogging with AskSupport {
+class CorpusSupervisor extends Actor with ActorLogging with AskSupport with Ranking {
   implicit val timeout: Timeout = Timeout(5 seconds)
 
   var indices: List[ActorRef] = List()
@@ -44,44 +43,14 @@ class CorpusSupervisor extends Actor with ActorLogging with AskSupport {
         .mapTo[List[List[TreeNode[String]]]]
         .map(indices.zip(_))
         .onComplete {
-          case Success(results) => processResults(results)
+          case Success(results) => {
+            val res = rankResults(results)
+            if (res.isEmpty) log.info("No hits found")
+            else res.foreach(r => log.info(s"${r.name} (${r.score}): ${r.words}"))
+          }
           case Failure(err) => log.error(s"Something went wrong: $err")
         }
     }
     case _ => log.error("Invalid command")
-  }
-
-  /**
-    * Filter out empty data and print out hits with scores.
-    *
-    * @param results
-    */
-  private def processResults(results: List[(ActorRef, List[TreeNode[String]])]): Unit = {
-    val present = results.filter(_._2.nonEmpty)
-    if (present.isEmpty) {
-      log.info("No hits found!")
-      return
-    }
-
-    // TODO: sort before display but fine for now
-    present.foreach { case (a, hits) => {
-      log.info(s"${a.path.name}: search score ${score(hits)} (${hits.map(_.data)})")
-    } }
-  }
-
-  /**
-    * Score a list of results. Each word occurrence counts for 1 point,
-    * and then the sum of words that can be sequenced (i.e. a phrase)
-    * counts for 0.25 points.
-    *
-    * TODO: sequence bit
-    *
-    * Major assumption that user types query fragment in order.
-    *
-    * @param hits
-    * @return
-    */
-  private def score(hits: List[TreeNode[String]]): Double = {
-    hits.map(_.foundAt.length).sum + 0.0
   }
 }
