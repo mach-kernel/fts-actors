@@ -12,8 +12,8 @@ scalaVersion := "2.12.6"
 
 // It's possible to define many kinds of settings, such as:
 
-name := "hello-world"
-organization := "ch.epfl.scala"
+name := "fts-actors"
+organization := "com.machkernel.oss"
 version := "1.0"
 
 // Note, it's not required for you to define these three settings. These are
@@ -23,7 +23,10 @@ version := "1.0"
 
 // Want to use a published library in your project?
 // You can define other libraries as dependencies in your build like this:
-libraryDependencies += "org.typelevel" %% "cats-core" % "1.1.0"
+libraryDependencies ++= Seq(
+  "org.typelevel" %% "cats-core" % "1.1.0",
+  "com.typesafe.akka" %% "akka-actor" % "2.5.17"
+)
 // Here, `libraryDependencies` is a set of dependencies, and by using `+=`,
 // we're adding the cats dependency to the set of dependencies that sbt will go
 // and fetch when it starts up.
