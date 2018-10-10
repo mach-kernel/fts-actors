@@ -7,7 +7,7 @@ final case class WordInstance(word: String, pos: Int)
 
 trait Ranking {
   /**
-    * Filter out empty data and print out hits with scores.
+    * Apply ranking and return results.
     *
     * @param results
     */

@@ -11,6 +11,7 @@ object CorpusIndex {
 }
 
 class CorpusIndex(val corpusName: String) extends Actor with ActorLogging with TreeOperations[String] {
+  private val nonWordRE = "[^\\w]*".r
   var rootNode: Option[TreeNode[String]] = None
 
   override def preStart() = log.info(s"Index actor for $corpusName up!")
@@ -18,11 +19,11 @@ class CorpusIndex(val corpusName: String) extends Actor with ActorLogging with T
 
   override def receive: Receive = {
     case AddWord(word, pos) => {
-      val lc = word.toLowerCase.replaceAll("[^\\w]*", "")
+      val clean = nonWordRE.replaceAllIn(word.toLowerCase, "")
 
       this.rootNode match {
-        case Some(node) => insertTree(node, lc, pos)
-        case None => this.rootNode = Some(TreeNode(lc, foundAt = List(pos)))
+        case Some(node) => insertTree(node, clean, pos)
+        case None => this.rootNode = Some(TreeNode(clean, foundAt = List(pos)))
       }
     }
     case Query(str) => {
