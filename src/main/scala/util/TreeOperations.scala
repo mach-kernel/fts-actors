@@ -1,46 +1,40 @@
 package util
 
-trait TreeOperations[T <: Comparable[T]] {
-  /**
-    * Insert data into the tree
-    *
-    * @param node
-    * @param data
-    * @param foundAt
-    */
-  protected def insertTree(node: TreeNode[T], data: T, foundAt: Int): Unit = {
-    if (data == node.data) {
-      node.foundAt = foundAt :: node.foundAt
-      return
+trait TreeOperations[T] {
+  def insert(node: TreeNode[T], data: T, foundAt: Int): Unit
+  def findNode(node: TreeNode[T], data: T): Option[TreeNode[T]]
+}
+
+object TreeOperations {
+  implicit def opsComparable[T <: Comparable[T]]: TreeOperations[T] = new TreeOperations[T] {
+    def insert(node: TreeNode[T], data: T, foundAt: Int): Unit = {
+      if (data.compareTo(node.data) == 0) {
+        node.foundAt = foundAt :: node.foundAt
+        return
+      }
+
+      if (data.compareTo(node.data) > 0) {
+        node.right match {
+          case Some(child: TreeNode[T]) => insert(child, data, foundAt)
+          case None => node.right = Some(TreeNode[T](data, foundAt = List(foundAt)))
+        }
+      } else {
+        node.left match {
+          case Some(child: TreeNode[T]) => insert(child, data, foundAt)
+          case None => node.left = Some(TreeNode[T](data, foundAt = List(foundAt)))
+        }
+      }
     }
 
-    if (data.compareTo(node.data) > 0) {
-      node.right match {
-        case Some(child: TreeNode[T]) => insertTree(child, data, foundAt)
-        case None => node.right = Some(TreeNode[T](data, foundAt = List(foundAt)))
-      }
-    } else {
-      node.left match {
-        case Some(child: TreeNode[T]) => insertTree(child, data, foundAt)
-        case None => node.left = Some(TreeNode[T](data, foundAt = List(foundAt)))
-      }
+    def findNode(node: TreeNode[T], data: T): Option[TreeNode[T]] = {
+      if (node.data.compareTo(data) == 0) return Some(node)
+      (if (data.compareTo(node.data) > 0) node.right else node.left)
+        .flatMap(findNode(_, data))
     }
   }
 
-  /**
-    * Find data in the tree
-    *
-    * @param node
-    * @param data
-    * @return
-    */
-  protected def findItem(node: Option[TreeNode[T]], data: T): Option[TreeNode[T]] = {
-    node match {
-      case Some(n: TreeNode[T]) => {
-        if (data == n.data) return node
-        if (data.compareTo(n.data) > 0) findItem(n.right, data) else findItem(n.left, data)
-      }
-      case None => None
-    }
+  implicit class TreeNodeOps[T](node: TreeNode[T])(implicit ops: TreeOperations[T]) {
+    def insert(data: T, foundAt: Int): Unit = ops.insert(node, data, foundAt)
+    def findNode(data: T): Option[TreeNode[T]] = ops.findNode(node, data)
   }
 }

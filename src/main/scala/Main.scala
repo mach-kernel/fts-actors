@@ -3,9 +3,18 @@ import java.io.File
 import java.util.logging.Logger
 
 import actor._
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.pattern.AskSupport
+import akka.util.Timeout
 
-object Main extends App {
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
+import scala.concurrent.duration._
+
+object Main extends App with AskSupport {
+  implicit val timeout: Timeout = Timeout(5 seconds)
+
   val logger = Logger.getLogger(getClass.getName)
   val actorSystem: ActorSystem = ActorSystem("ftsSystem")
   val supervisor = actorSystem.actorOf(Props[CorpusSupervisor], "ftsSupervisor")
@@ -47,25 +56,26 @@ object Main extends App {
     */
   def loadFile(path: String): Unit = {
     val file = new File(path)
-
     if (!file.exists || !file.isFile) {
       println("Invalid file")
       return
     }
 
-    supervisor ! NewIndex(file.getName)
-    lazy val destinationRef = actorSystem.actorSelection(
-      s"user/ftsSupervisor/${file.getName}"
-    )
+    val ref = (supervisor ? NewIndex(file.getName)).mapTo[ActorRef]
 
-    var pos = 0
-    for (l <- Source.fromFile(file).getLines()) {
-      l.split(' ').foreach(w => {
-        destinationRef ! AddWord(w, pos)
-        pos += 1
-      })
+    ref.onComplete {
+      case Success(r) => {
+        var pos = 0
+        for (l <- Source.fromFile(file).getLines()) {
+          l.split(' ').foreach(w => {
+            r ! AddWord(w, pos)
+            pos += 1
+          })
+        }
+
+        logger.info(s"Index for ${file.getName} complete!")
+      }
+      case Failure(f) => println(s"Something went wrong $f")
     }
-
-    logger.info(s"Index for ${file.getName} complete!")
   }
 }
