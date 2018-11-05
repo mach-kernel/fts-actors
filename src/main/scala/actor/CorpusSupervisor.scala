@@ -21,8 +21,6 @@ object CorpusSupervisor {
 class CorpusSupervisor extends Actor with ActorLogging with AskSupport with Ranking {
   implicit val timeout: Timeout = Timeout(5 seconds)
 
-  var indices: List[ActorRef] = List()
-
   override def preStart(): Unit = log.info(s"${self.path.name} up!")
   override def postStop(): Unit = log.info(s"${self.path.name} down!")
 
@@ -32,13 +30,15 @@ class CorpusSupervisor extends Actor with ActorLogging with AskSupport with Rank
       context.stop(self)
     }
     case NewIndex(name) => {
-      indices = context.actorOf(CorpusIndex.props(name), name = name) :: indices
+      sender ! context.actorOf(CorpusIndex.props(name), name = name)
     }
     case QueryAll(str) => {
       // This is a little meh since we have to rely on mapTo
       // for 'checking' the cast, but it'll do.
       //
       // Can't wait for more progress on this: https://doc.akka.io/docs/akka/current/typed/actors.html
+      val indices = context.children.toList
+
       Future.sequence(indices.par.map(_ ? Query(str)).toList)
         .mapTo[List[List[TreeNode[String]]]]
         .map(indices.zip(_))
